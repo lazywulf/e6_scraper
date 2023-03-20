@@ -1,2 +1,4 @@
+from scripts.e621scrapper import *
+
 if __name__ == "__main__":
-    pass
+    Scrapper.run("config.json")

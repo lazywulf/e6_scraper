@@ -5,7 +5,7 @@ import aiohttp
 import json
 
 from time import time as t
-from util import *
+from .util import *
 
 pics = []
 
@@ -15,7 +15,7 @@ class Scrapper:
         with open(config_path, "r") as config:
             attr = json.loads(config.read(), cls=json.JSONDecoder)
         self.header = {
-            "User-Agent": "e621 scrapper 1.0 - by lazywulf"
+            "User-Agent": "e621 scrapper b1.0 - by lazywulf"
         }
         self.semaphore = asyncio.Semaphore(2)
 
@@ -28,6 +28,7 @@ class Scrapper:
         self.AUTH = attr["auth"]["auth"]
         self.basic_auth = aiohttp.BasicAuth(attr["auth"]["user"], attr["auth"]["api_key"])
         self.post_per_page = attr["post_per_page"]
+        self.pages = attr["pages"]
         self.directory = attr["download_dir"]
 
         self.ITER_COUNT = attr["iter_count"]
@@ -72,7 +73,7 @@ class Scrapper:
     # main funcs
     async def fetch(self):
         global pics
-        tasks = [asyncio.create_task(self.gen_post_list(x)) for x in range(1, 10)]
+        tasks = [asyncio.create_task(self.gen_post_list(x)) for x in range(1, self.pages + 1)]
         for info in await asyncio.gather(*tasks):
             pics += info
 
@@ -102,8 +103,8 @@ class Scrapper:
         await session.close()
 
     @classmethod
-    def run(cls):
-        scrapper = cls("config.json")
+    def run(cls, config_path):
+        scrapper = cls(path_finder(config_path))
         loop = asyncio.get_event_loop()
         print("fetching")
         loop.run_until_complete(scrapper.fetch())

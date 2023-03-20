@@ -13,6 +13,7 @@
 		"api_key": ""
 	},
 	"post_per_page": 200,
+	"pages": 10,
 	"download_dir": "downloads",
 
 	"iter_count": 1

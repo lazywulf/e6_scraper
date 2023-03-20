@@ -1,3 +1,6 @@
 .idea/
 __pycache__/
 downloads/
+
+assets
+scripts/e621scrapper/UI.py
