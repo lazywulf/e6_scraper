@@ -15,11 +15,12 @@ def path_finder(relative_path: str) -> str:
     else:
         file_path_l = main_path.split("\\")
         p = ""
+
         for i, d in enumerate(file_path_l):
-            if d is project_name:
-                p = main_path[:i]
+            if d == project_name:
+                p = file_path_l[:i + 1]
                 break
-        p = "\\".join((p.split("\\"))[:-1])
+        p = "\\".join(p)
         return path.normpath(path.join(p, relative_path))
 
 

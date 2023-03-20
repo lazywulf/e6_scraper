@@ -1,0 +1,19 @@
+{
+	"blacklist": [],
+	"tags": [],
+	"config": {
+		"fav": "",
+		"rating": "",
+		"order": ""
+	},
+	
+	"auth": {
+		"auth": false,
+		"user": "",
+		"api_key": ""
+	},
+	"post_per_page": 200,
+	"download_dir": "downloads",
+
+	"iter_count": 1
+}
