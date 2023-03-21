@@ -5,7 +5,6 @@ import aiohttp
 import json
 
 from time import time as t
-from .util import *
 
 pics = []
 
@@ -64,7 +63,7 @@ class Scrapper:
             async with session.get(pic_info["file"]) as resp:
                 bfile = await resp.read()
             async with aiofiles.open(
-                    path_finder("{}/{}.{}".format(self.directory, pic_info["id"], pic_info["ext"])),
+                    "{}\\{}.{}".format(self.directory, pic_info["id"], pic_info["ext"]),
                     mode="wb+") as output:
                 await output.write(bfile)
         except asyncio.exceptions.TimeoutError as e:
@@ -104,7 +103,7 @@ class Scrapper:
 
     @classmethod
     def run(cls, config_path):
-        scrapper = cls(path_finder(config_path))
+        scrapper = cls(config_path)
         loop = asyncio.get_event_loop()
         print("fetching")
         loop.run_until_complete(scrapper.fetch())
@@ -113,6 +112,3 @@ class Scrapper:
         loop.run_until_complete(scrapper.download())
         print(t() - s)
 
-
-if __name__ == "__main__":
-    Scrapper.run()

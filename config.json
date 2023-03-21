@@ -14,7 +14,7 @@
 	},
 	"post_per_page": 200,
 	"pages": 10,
-	"download_dir": "downloads",
+	"download_dir": "F:\\d",
 
 	"iter_count": 1
 }

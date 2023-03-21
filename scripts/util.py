@@ -8,7 +8,7 @@ project_name = "e6_scrapper"
 
 
 def path_finder(relative_path: str) -> str:
-    main_path = str(pathlib.Path(__main__.__file__))
+    main_path = str(pathlib.Path(__main__.__file__).parent)
     if main_path.split("\\")[-1] is project_name:
         project_dir = "\\".join(main_path.split("\\")[:-1])
         return path.normpath(path.join(project_dir, relative_path))
@@ -45,17 +45,3 @@ def clear_dir(dir_path: str) -> None:
         print("Cleared {}.".format(path.split(dir_path)[1]))
     except FileNotFoundError:
         print("Directory not found or missing.")
-
-
-def output_log(l):
-    with open("out.txt", "w") as out:
-        for l in l:
-            print(l, file=out)
-
-
-def test() -> None:
-    clear_dir("downloads")
-
-
-if __name__ == "__main__":
-    test()
