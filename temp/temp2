@@ -1,0 +1,106 @@
+import asyncio
+from aiolimiter import AsyncLimiter
+import aiofiles
+import aiohttp
+import urllib3
+
+from time import time as t
+from util import *
+
+header = {
+    "User-Agent": "TestProject/GetPics/b1.9 username:lazywulf"
+}
+blacklist = []
+pics = []
+
+arg = ["wolf"]
+kwarg = {"order": "random"}
+AUTH = False
+basic_auth = aiohttp.BasicAuth("lazywulf", "tDHJc5Ftv92pc2m9euRX83Aa")
+
+ITER_COUNT = 2
+
+
+async def gen_post_list(*tags, **config) -> list[dict]:
+    picture_info = []
+    # remember the bracket, without that bracket, the order is completely wrong.
+    temp = "+".join(tags) + ("+" if tags and config else "") + "+".join(f"{key}%3A{val}" for key, val in config.items())
+    url_path = "/posts.json?tags=" + temp
+
+    async with aiohttp.ClientSession(
+            "https://e621.net",
+            headers=header,
+            auth=basic_auth if AUTH else None) as session:
+        async with session.get(url_path + "+-".join(blacklist)) as resp:
+            print(f"post list {resp.status}")
+            posts = dict(await resp.json())["posts"]
+            for post in posts:
+                if post["file"]["url"] is not None:
+                    picture_info.append({
+                        "id": post["id"],
+                        "rating": post["rating"],
+                        "file": post["file"]["url"],
+                        "preview": post["preview"]["url"],
+                        "ext": post["file"]["ext"]})
+    return picture_info
+
+
+async def get_one_pic(pic_info: dict[str, str], session: aiohttp.ClientSession):
+    bfile = ""
+    # "session" can be pass into a func.
+    async with session.get(pic_info["file"]) as resp:
+        bfile = await resp.read()
+        async with aiofiles.open(
+                path_finder("downloads/{}.{}".format(pic_info["id"], pic_info["ext"])), mode="wb+") as output:
+            await output.write(bfile)
+
+
+# things to modify
+async def fetch(*args, **kwargs):
+    global pics
+    tasks = [asyncio.create_task(gen_post_list(*args, **kwargs)) for x in range(39)]
+    futures = []
+    # sudden burst of tasks. for is sync but why is it not doing its job?
+    # I'm thinking of using a queue-like structure to implement a task pool, but I don't know how.
+    # update: found something interesting: leaky bucket algorithm
+    # SOME AWESOME DUDE MADE IT INTO A PACKAGE. Great!!
+    for task in tasks:
+        try:
+            await asyncio.sleep(1)    # hard rate limit: 2 requests per sec
+            futures.append(await asyncio.ensure_future(task))
+        except:
+            pass
+    print(len(futures))
+    return futures
+
+
+async def download() -> None:
+    global pics
+    length = len(pics)
+    session = aiohttp.ClientSession()
+
+    coroutines = [asyncio.create_task(get_one_pic(info, session)) for info in pics]
+    if ITER_COUNT > 1:
+        batch_size = int(length / (ITER_COUNT - 1))
+        for i in range(ITER_COUNT - 1):
+            chunk = coroutines[i * batch_size: (i + 1) * batch_size]
+            await asyncio.gather(*chunk)
+    else:
+        await asyncio.gather(*coroutines)
+
+    await session.close()
+
+
+if __name__ == "__main__":
+    urllib3.disable_warnings()
+    clear_dir("downloads")
+
+    print("fetching")
+    loop = asyncio.get_event_loop()
+    for future_result in loop.run_until_complete(fetch(*arg, **kwarg)):
+        pics += future_result
+    print("done", len(pics))
+    s = t()
+    loop.run_until_complete(download())
+    # download()
+    print(t() - s)

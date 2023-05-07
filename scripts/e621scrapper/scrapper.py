@@ -35,6 +35,8 @@ class Scrapper:
     async def gen_post_list(self, pages) -> list[dict]:
         picture_info = []
         # remember the bracket, without that bracket, the order is completely wrong.
+        for item in self.blacklist:
+            self.tags.append("-" + item)
         temp = "+".join(self.tags) +\
                ("+" if self.tags and self.config else "") +\
                "+".join(f"{key}%3A{val}" for key, val in self.config.items())
@@ -45,7 +47,7 @@ class Scrapper:
                     "https://e621.net",
                     headers=self.header,
                     auth=self.basic_auth if self.AUTH else None) as session:
-                async with session.get(url_path + "+-".join(self.blacklist)) as resp:
+                async with session.get(url_path) as resp:
                     posts = dict(await resp.json())["posts"]
                     for post in posts:
                         if post["file"]["url"] is not None:
