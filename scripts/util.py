@@ -45,3 +45,4 @@ def clear_dir(dir_path: str) -> None:
         print("Cleared {}.".format(path.split(dir_path)[1]))
     except FileNotFoundError:
         print("Directory not found or missing.")
+

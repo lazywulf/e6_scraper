@@ -18,11 +18,9 @@
     - pages: how many pages you want to access
         - along with post per page, it determines how many post the scrapper is going to download
         - the numbers may be slightly off because of the blacklist item
-    - iter count: iteration count
-        - this will split tasks into batches
+    - coroutine count: count of the coroutine executed at the same time.
+        - I don't actually know if it's correct.
 2. Go to main.py and execute.
 
 ## notes
-I'm not expecting anyone to import it as a package, so please don't do it.
 It's a project for practice purposes. Don't expect too much.
-If I have time, I'll complete the UI and optimize it even more.

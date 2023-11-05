@@ -1,10 +1,11 @@
 {
-	"blacklist": ["animated"],
-	"tags": ["girly"],
+	"blacklist": [],
+	"tags": [],
 	"config": {
 		"fav": "",
-		"rating": "e",
-		"order": "score"
+		"rating": "",
+		"order": "",
+		"score": ""
 	},
 	
 	"auth": {
@@ -13,8 +14,8 @@
 		"api_key": ""
 	},
 	"post_per_page": 200,
-	"pages": 3,
-	"download_dir": "D:\\h",
+	"pages": 0,
+	"download_dir": "",
 
-	"iter_count": 1
+	"coroutine_count": 0
 }

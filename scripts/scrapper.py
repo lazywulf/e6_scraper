@@ -14,23 +14,22 @@ class Scrapper:
         with open(config_path, "r") as config:
             attr = json.loads(config.read(), cls=json.JSONDecoder)
         self.header = {
-            "User-Agent": "e621 scrapper b1.0 - by lazywulf"
+            "User-Agent": "e621 scrapper 1.0 - by lazywulf"
         }
         self.semaphore = asyncio.Semaphore(2)
 
         self.blacklist = attr["blacklist"]
         self.tags = attr["tags"]
         self.config = {}
-        for item in attr["config"]:
-            if item[1] is True:
-                self.config[item[0]] = item[1]
+        for key, val in attr["config"].items():
+            if val != "":
+                self.config[key] = val
         self.AUTH = attr["auth"]["auth"]
         self.basic_auth = aiohttp.BasicAuth(attr["auth"]["user"], attr["auth"]["api_key"])
         self.post_per_page = attr["post_per_page"]
-        self.pages = attr["pages"]
+        self.pages = attr["pages"] if attr["pages"] > 0 else 0
         self.directory = attr["download_dir"]
-
-        self.ITER_COUNT = attr["iter_count"]
+        self.COROUTINE_COUNT = attr["coroutine_count"] if attr["coroutine_count"] > 0 else 0
 
     async def gen_post_list(self, pages) -> list[dict]:
         picture_info = []
@@ -66,17 +65,31 @@ class Scrapper:
                 bfile = await resp.read()
             async with aiofiles.open(
                     "{}\\{}.{}".format(self.directory, pic_info["id"], pic_info["ext"]),
-                    mode="wb+") as output:
+                    mode="wb") as output:
                 await output.write(bfile)
         except asyncio.exceptions.TimeoutError as e:
             raise e
 
-    # main funcs
     async def fetch(self):
+        async def f(tasks):
+            global pics
+            for info in await asyncio.gather(*tasks):
+                pics += info
+
         global pics
-        tasks = [asyncio.create_task(self.gen_post_list(x)) for x in range(1, self.pages + 1)]
-        for info in await asyncio.gather(*tasks):
-            pics += info
+        if self.pages != 0:
+            await f([asyncio.create_task(self.gen_post_list(x)) for x in range(1, self.pages + 1)])
+        else:
+            i, length = 0, 0
+            while True:
+                await f([asyncio.create_task(self.gen_post_list(x + i)) for x in range(1, 11)])
+                i += 10
+                print(i, length)
+                print(len(pics))
+                if length == len(pics):
+                    break
+                length = len(pics)
+
 
     async def download(self) -> None:
         """
@@ -94,10 +107,9 @@ class Scrapper:
         session = aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=None))
 
         coroutines = [self.get_one_pic(info, session) for info in pics]
-        if self.ITER_COUNT > 1:
-            batch_size = int(length / (self.ITER_COUNT - 1))
-            for i in range(self.ITER_COUNT - 1):
-                chunk = coroutines[i * batch_size: (i + 1) * batch_size]
+        if self.COROUTINE_COUNT != 0:
+            for i in range(int(length / self.COROUTINE_COUNT) + 1):
+                chunk = coroutines[i * self.COROUTINE_COUNT: (i + 1) * self.COROUTINE_COUNT]
                 await asyncio.gather(*chunk)
         else:
             await asyncio.gather(*coroutines)
@@ -107,7 +119,7 @@ class Scrapper:
     def run(cls, config_path):
         scrapper = cls(config_path)
         loop = asyncio.get_event_loop()
-        print("fetching")
+        print("fetching...")
         loop.run_until_complete(scrapper.fetch())
         print("done", "file count: ", len(pics))
         s = t()

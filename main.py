@@ -1,4 +1,4 @@
-from scripts.e621scrapper import *
+from scripts.scrapper import Scrapper
 from scripts.util import *
 
 if __name__ == "__main__":

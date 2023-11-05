@@ -1,6 +1,13 @@
 .idea/
 __pycache__/
 downloads/
+scripts/e621scrapper/OLD/
+venv/
+
 
 assets
-scripts/UI.py
+scripts/UI/
+build/
+OLD/
+
+config_mine.json
