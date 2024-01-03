@@ -6,16 +6,18 @@ import json
 
 from time import time as t
 
+pics = []
+
 
 class Scrapper:
     def __init__(self, config_path):
         with open(config_path, "r") as config:
             attr = json.loads(config.read(), cls=json.JSONDecoder)
         self.header = {
-            "User-Agent": "e621 scrapper 1.1 - by lazywulf"
+            "User-Agent": "e621 scrapper b1.0 - by lazywulf"
         }
         self.semaphore = asyncio.Semaphore(2)
-        self.pics = []
+
         self.blacklist = attr["blacklist"]
         self.tags = attr["tags"]
         self.config = {}
@@ -25,10 +27,10 @@ class Scrapper:
         self.AUTH = attr["auth"]["auth"]
         self.basic_auth = aiohttp.BasicAuth(attr["auth"]["user"], attr["auth"]["api_key"])
         self.post_per_page = attr["post_per_page"]
-        self.pages = attr["pages"] if attr["pages"] > 0 else 0
+        self.pages = attr["pages"]
         self.directory = attr["download_dir"]
-        self.COROUTINE_COUNT = attr["coroutine_count"] if attr["coroutine_count"] > 0 else 0
 
+        self.ITER_COUNT = attr["iter_count"]
 
     async def gen_post_list(self, pages) -> list[dict]:
         picture_info = []
@@ -55,7 +57,7 @@ class Scrapper:
                                 "file": post["file"]["url"],
                                 "preview": post["preview"]["url"],
                                 "ext": post["file"]["ext"]})
-        return picture_info
+            return picture_info
 
     async def get_one_pic(self, pic_info: dict[str, str], session: aiohttp.ClientSession):
         # "session" can be pass into a func.
@@ -64,29 +66,17 @@ class Scrapper:
                 bfile = await resp.read()
             async with aiofiles.open(
                     "{}\\{}.{}".format(self.directory, pic_info["id"], pic_info["ext"]),
-                    mode="wb") as output:
+                    mode="wb+") as output:
                 await output.write(bfile)
         except asyncio.exceptions.TimeoutError as e:
-            print(f"TimeoutError: post '{pic_info['id']}.{pic_info['ext']}' fetch timeout.")
+            raise e
 
+    # main.xml funcs
     async def fetch(self):
-        async def f(tasks):
-            for info in await asyncio.gather(*tasks):
-                self.pics += info
-
-        if self.pages != 0:
-            await f([asyncio.create_task(self.gen_post_list(x)) for x in range(1, self.pages + 1)])
-        else:
-            i, length = 0, 0
-            while True:
-                await f([asyncio.create_task(self.gen_post_list(x + i)) for x in range(1, 11)])
-                i += 10
-                print(i, length)
-                print(len(self.pics))
-                if length == len(self.pics):
-                    break
-                length = len(self.pics)
-
+        global pics
+        tasks = [asyncio.create_task(self.gen_post_list(x)) for x in range(1, self.pages + 1)]
+        for info in await asyncio.gather(*tasks):
+            pics += info
 
     async def download(self) -> None:
         """
@@ -99,13 +89,15 @@ class Scrapper:
             in the 1800 pics test, passing directly/ gather is the fastest.
             https://stackoverflow.com/questions/55761652/what-is-the-overhead-of-an-asyncio-task
         """
-        length = len(self.pics)
+        global pics
+        length = len(pics)
         session = aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=None))
 
-        coroutines = [self.get_one_pic(info, session) for info in self.pics]
-        if self.COROUTINE_COUNT != 0:
-            for i in range(int(length / self.COROUTINE_COUNT) + 1):
-                chunk = coroutines[i * self.COROUTINE_COUNT: (i + 1) * self.COROUTINE_COUNT]
+        coroutines = [self.get_one_pic(info, session) for info in pics]
+        if self.ITER_COUNT > 1:
+            batch_size = int(length / (self.ITER_COUNT - 1))
+            for i in range(self.ITER_COUNT - 1):
+                chunk = coroutines[i * batch_size: (i + 1) * batch_size]
                 await asyncio.gather(*chunk)
         else:
             await asyncio.gather(*coroutines)
@@ -115,11 +107,10 @@ class Scrapper:
     def run(cls, config_path):
         scrapper = cls(config_path)
         loop = asyncio.get_event_loop()
-        print("fetching...")
+        print("fetching")
         loop.run_until_complete(scrapper.fetch())
-        print("done", "file count: ", len(scrapper.pics))
+        print("done", "file count: ", len(pics))
         s = t()
         loop.run_until_complete(scrapper.download())
         print(t() - s)
-        del scrapper
 
