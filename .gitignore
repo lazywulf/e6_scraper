@@ -9,5 +9,7 @@ assets
 scripts/UI/
 build/
 OLD/
+temp/
 
 config_mine.json
+.gitignore

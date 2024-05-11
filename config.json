@@ -14,7 +14,7 @@
 		"api_key": ""
 	},
 	"post_per_page": 200,
-	"pages": 0,
+	"pages": 1,
 	"download_dir": "",
 
 	"coroutine_count": 0

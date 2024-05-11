@@ -4,7 +4,11 @@
 - An asynchronized web scrapper for e621.net.
 
 ## How to use
-1. Edit the config.json file.
+1. Run main.py straight ahead. Here's an example command:
+```
+python run.py -p 5 -d ./
+```
+For any other flags, please see run.py.
     - blacklist: a list with the tags you don't want to see
     - tags: a list of tags you are searching for
     - config: a dictionary of some searching configuration, please see e621 search cheat sheet for more.
@@ -20,7 +24,8 @@
         - the numbers may be slightly off because of the blacklist item
     - coroutine count: count of the coroutine executed at the same time.
         - I don't actually know if it's correct.
-2. Go to main.py and execute.
+
+2. Set config.json and use `Scrapper.run_by_file(<config_path>)`
 
 ## notes
 It's a project for practice purposes. Don't expect too much.
