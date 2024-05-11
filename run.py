@@ -3,7 +3,7 @@ from scrapper import Scrapper
 
 def main():
 
-    parser = argparse.ArgumentParser(description="Your program description")
+    parser = argparse.ArgumentParser(description="e621.net scrapper")
 
     parser.add_argument("-b", "--blacklist", nargs='*', default=[], help="Blacklist")
     parser.add_argument("-t", "--tags", nargs='*', default=[], help="Tags")
