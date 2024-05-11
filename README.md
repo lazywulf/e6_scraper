@@ -24,7 +24,9 @@ For any other flags, please see run.py.
         - the numbers may be slightly off because of the blacklist item
     - coroutine count: count of the coroutine executed at the same time.
         - I don't actually know if it's correct.
+
 2. Set config.json and run run_by_file.py.
+
 3. Use `Scrapper.run(<dict>)` if you have the argument dict.
 
 ## notes
