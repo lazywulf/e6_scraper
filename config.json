@@ -7,15 +7,13 @@
 		"order": "",
 		"score": ""
 	},
-	
 	"auth": {
-		"auth": false,
-		"user": "",
-		"api_key": ""
+		"user": "Your user name",
+		"api_key": "Your api key"
 	},
-	"post_per_page": 200,
+	"post_per_page": 50,
 	"pages": 1,
 	"download_dir": "",
-
-	"coroutine_count": 0
+	"chunk_size": 1,
+	"timeout": 10
 }

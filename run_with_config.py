@@ -1,7 +1,7 @@
 from scrapper import Scrapper
 
 def main():
-    Scrapper.run_by_file("config.json")
+    Scrapper.run_with_config("config.json")
 
 
 if __name__ == "__main__":

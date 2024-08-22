@@ -13,3 +13,4 @@ temp/
 
 config_mine.json
 .gitignore
+*.log

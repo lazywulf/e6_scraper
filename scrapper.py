@@ -1,92 +1,144 @@
+import os
+from typing import Optional, Tuple
+import logging
+import json
 import asyncio
+from asyncio import Semaphore, gather, get_event_loop
 import aiofiles
 import aiohttp
 
-import json
-
-from time import time as t
-
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('scrapper.log'),
+        logging.StreamHandler()
+    ]
+)
 
 class Scrapper:
-    def __init__(self, config):
+    def __init__(self, config: dict):
         self.header = {
-            "User-Agent": "e621 scrapper 1.1 - by lazywulf"
+            "User-Agent": "e621 scrapper 1.2 - by lazywulf"
         }
-        self.semaphore = asyncio.Semaphore(2)
-        self.pics = []
-        self.blacklist = config["blacklist"]
-        self.tags = config["tags"]
-        self.config = {}
-        for key, val in config["config"].items():
-            if val != "":
-                self.config[key] = val
-        self.AUTH = config["auth"]["auth"]
-        self.basic_auth = aiohttp.BasicAuth(config["auth"]["user"], config["auth"]["api_key"])
-        self.post_per_page = config["post_per_page"]
-        self.pages = config["pages"] if config["pages"] > 0 else 0
-        self.directory = config["download_dir"]
-        self.COROUTINE_COUNT = config["coroutine_count"] if config["coroutine_count"] > 0 else 0
+        self.semaphore: Semaphore = Semaphore(2)
+        self.pics: list = []
+        self.blacklist: list = config.get("blacklist", [])
+        self.tags: list = config.get("tags", [])
+        self.config: dict = {key: val for key, val in config.get("config", {}).items() if val}
+        self.AUTH: Optional[dict] = config.get("auth", None)
+        self.basic_auth: Optional[aiohttp.BasicAuth] = aiohttp.BasicAuth(
+            self.AUTH.get("user", ""), 
+            self.AUTH.get("api_key", "")
+        ) if self.AUTH else None
+        self.post_per_page: int = config.get("post_per_page", 50)
+        self.pages: int = max(config.get("pages", 5), 1)
+        self.directory: str = config.get("download_dir", "./downloads")
+        self.CHUNKSIZE: int = max(config.get("CHUNKSIZE", 32), 1)
+        self.session: Optional[aiohttp.ClientSession] = None
+        self.timeout: int = config.get("timeout", None)
 
-
-    async def gen_post_list(self, pages) -> list[dict]:
+    async def _gen_post_list(self, page: int) -> list[dict]:
         picture_info = []
-        # remember the bracket, without that bracket, the order is completely wrong.
+        b_list = []
         for item in self.blacklist:
-            self.tags.append("-" + item)
+            b_list.append("-" + item)
         temp = "+".join(self.tags) +\
-               ("+" if self.tags and self.config else "") +\
-               "+".join(f"{key}%3A{val}" for key, val in self.config.items())
-        url_path = f"/posts.json?page={pages}&limit={self.post_per_page}&tags=" + temp
+                "+".join(b_list) +\
+                ("+" if self.tags and self.config else "") +\
+                "+".join(f"{key}%3A{val}" for key, val in self.config.items())
+        url_path = f"https://e621.net/posts.json?page={page}&limit={self.post_per_page}&tags=" + temp
 
         async with self.semaphore:
-            async with aiohttp.ClientSession(
-                    "https://e621.net",
-                    headers=self.header,
-                    auth=self.basic_auth if self.AUTH else None) as session:
-                async with session.get(url_path) as resp:
-                    posts = dict(await resp.json())["posts"]
-                    for post in posts:
-                        if post["file"]["url"] is not None:
-                            picture_info.append({
-                                "id": post["id"],
-                                "rating": post["rating"],
-                                "file": post["file"]["url"],
-                                "preview": post["preview"]["url"],
-                                "ext": post["file"]["ext"]})
+            try:
+                async with self.session.get(url_path) as resp:
+                    if resp.status == 200:
+                        try:
+                            response_json = await resp.json()
+                        except ValueError as e:
+                            logging.error(f"Failed to decode JSON: {e}")
+                            return picture_info
+
+                        posts = response_json.get("posts", [])
+                        for post in posts:
+                            file_info = post.get("file", {})
+                            if file_info.get("url"):
+                                picture_info.append({
+                                    "id": post.get("id"),
+                                    "rating": post.get("rating"),
+                                    "file": file_info.get("url"),
+                                    "preview": post.get("preview", {}).get("url"),
+                                    "ext": file_info.get("ext")
+                                })
+                        logging.info(f"Page {page} info fetched")
+                    else:
+                        logging.error(f"Failed to fetch posts on page {page}: HTTP {resp.status}")
+            except aiohttp.ClientError as e:
+                logging.error(f"HTTP request failed on page {page}: {e}")
+            except TimeoutError:
+                logging.error(f"Page {page} request timed out")
+            except Exception as e:
+                logging.error(f"Unexpected error occurred: {e}")
         return picture_info
 
-    async def get_one_pic(self, pic_info: dict[str, str], session: aiohttp.ClientSession):
-        # "session" can be pass into a func.
-        try:
-            async with session.get(pic_info["file"]) as resp:
-                bfile = await resp.read()
-            async with aiofiles.open(
-                    "{}\\{}.{}".format(self.directory, pic_info["id"], pic_info["ext"]),
-                    mode="wb") as output:
-                await output.write(bfile)
-        except asyncio.exceptions.TimeoutError as e:
-            print(f"TimeoutError: post '{pic_info['id']}.{pic_info['ext']}' fetch timeout.")
+    async def _get_one_pic(self, pic_info: dict[str, str]) -> None:
+        pic_id = pic_info.get("id")
+        file_url = pic_info.get("file")
+        file_ext = pic_info.get("ext")
+        
+        if not all([pic_id, file_url, file_ext]):
+            logging.error("Missing required information in pic_info: %s", pic_info)
+            return
+        
+        if not os.path.exists(self.directory):
+            os.makedirs(self.directory)
+            logging.info(f"Created directory {self.directory}")
 
-    async def fetch(self):
+        file_path = os.path.join(self.directory, f"{pic_id}.{file_ext}")
+        
+        try:
+            async with self.session.get(file_url) as resp:
+                if resp.status == 200:
+                    bfile = await resp.read()
+                else:
+                    logging.error(f"Failed to download {file_url}: HTTP {resp.status}")
+                    return 
+                
+            async with aiofiles.open(file_path, mode="wb") as output:
+                await output.write(bfile)
+                
+            logging.info(f"Successfully downloaded {file_path}")
+            
+        except asyncio.TimeoutError:
+            logging.error(f"TimeoutError: Post '{pic_id}.{file_ext}' fetch timed out.")
+        except aiohttp.ClientError as e:
+            logging.error(f"ClientError: Failed to fetch {file_url}. Error: {e}")
+        except OSError as e:
+            logging.error(f"OSError: Failed to write file {file_path}. Error: {e}")
+        except Exception as e:
+            logging.error(f"Unexpected error occurred: {e}")
+
+    async def _fetch(self) -> None:
         async def f(tasks):
-            for info in await asyncio.gather(*tasks):
+            for info in await gather(*tasks):
                 self.pics += info
 
+        logging.info("Fetching static links...")
         if self.pages != 0:
-            await f([asyncio.create_task(self.gen_post_list(x)) for x in range(1, self.pages + 1)])
+            await f([self._gen_post_list(x) for x in range(1, self.pages + 1)])
         else:
             i, length = 0, 0
             while True:
-                await f([asyncio.create_task(self.gen_post_list(x + i)) for x in range(1, 11)])
+                await f([self._gen_post_list(x + i) for x in range(1, 11)])
                 i += 10
                 print(i, length)
                 print(len(self.pics))
                 if length == len(self.pics):
                     break
                 length = len(self.pics)
+        logging.info(f"Static link fetching complete. Count: {len(self.pics)}")
 
-
-    async def download(self) -> None:
+    async def _download(self) -> None:
         """
         Did some test on this (200 pics/ 1800 pics)
         2 factors to consider:
@@ -98,40 +150,52 @@ class Scrapper:
             https://stackoverflow.com/questions/55761652/what-is-the-overhead-of-an-asyncio-task
         """
         length = len(self.pics)
-        session = aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=None))
+        c_size = max(self.CHUNKSIZE, 1)
 
-        coroutines = [self.get_one_pic(info, session) for info in self.pics]
-        if self.COROUTINE_COUNT != 0:
-            for i in range(int(length / self.COROUTINE_COUNT) + 1):
-                chunk = coroutines[i * self.COROUTINE_COUNT: (i + 1) * self.COROUTINE_COUNT]
-                await asyncio.gather(*chunk)
-        else:
-            await asyncio.gather(*coroutines)
-        await session.close()
+        logging.info("Downloading...")
+        coroutines = [self._get_one_pic(info) for info in self.pics]
+        for i in range(0, length, c_size):
+            chunk = coroutines[i: i + c_size]
+            await gather(*chunk)
+        logging.info("Download complete.")
 
     @classmethod
-    def run(cls, config):
+    def run(cls, config: dict) -> None:
         scrapper = cls(config)
-        loop = asyncio.get_event_loop()
-        print("fetching...")
-        loop.run_until_complete(scrapper.fetch())
-        print("done", "file count: ", len(scrapper.pics))
-        s = t()
-        loop.run_until_complete(scrapper.download())
-        print(t() - s)
-        del scrapper
+        loop = get_event_loop()
+        scrapper.session = aiohttp.ClientSession(headers=scrapper.header, auth=scrapper.basic_auth,
+                                                 timeout=aiohttp.ClientTimeout(sock_read=scrapper.timeout))
+        try:
+            loop.run_until_complete(scrapper._fetch())
+            loop.run_until_complete(scrapper._download())
+        except KeyboardInterrupt:
+            logging.exception("Iterrupted")
+        finally:
+            loop.run_until_complete(scrapper.session.close())
 
     @classmethod
-    def run_by_file(cls, config_file):
+    def run_with_config(cls, config_file: str) -> None:
         with open(config_file, "r") as f:
             config = json.loads(f.read(), cls=json.JSONDecoder)
-        scrapper = cls(config)
-        loop = asyncio.get_event_loop()
-        print("fetching...")
-        loop.run_until_complete(scrapper.fetch())
-        print("done", "file count: ", len(scrapper.pics))
-        s = t()
-        loop.run_until_complete(scrapper.download())
-        print(t() - s)
-        del scrapper
+        cls.run(config)
 
+    @classmethod
+    def run_with_searchbar(cls, keyword: str, 
+                           auth: Optional[Tuple[str, str]] = None,
+                           page_count: int = 5,
+                           post_per_page: int = 5,
+                           download_dir: Optional[str] = None,
+                           chunk_size: int =  32,
+                           timeout: Optional[int] = None):
+        tmp = keyword.split()
+        config = {"tags": tmp}
+        if auth:
+            config["auth"] =  {"user": auth[0], "api_key": auth[1]}
+        config["post_per_page"] = post_per_page
+        config["pages"] = page_count
+        if download_dir:
+            config["download_dir"] = download_dir
+        config["chunk_size"] = chunk_size
+        config["timeout"] = timeout
+        cls.run(config)
+        
