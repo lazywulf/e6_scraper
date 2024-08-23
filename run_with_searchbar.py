@@ -1,4 +1,4 @@
-from scrapper import Scrapper
+from scraper import Scraper
 import argparse
 
 def main():
@@ -15,7 +15,7 @@ def main():
     args = parser.parse_args()
 
     
-    Scrapper.run_with_searchbar(args.keyword, 
+    Scraper.run_with_searchbar(args.keyword, 
                                 args.auth,
                                 args.page_count,
                                 args.post_per_page,

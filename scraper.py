@@ -16,7 +16,7 @@ logging.basicConfig(
     ]
 )
 
-class Scrapper:
+class Scraper:
     def __init__(self, config: dict):
         self.header = {
             "User-Agent": "e621 scrapper 1.2 - by lazywulf"

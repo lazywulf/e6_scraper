@@ -1,7 +1,7 @@
-from scrapper import Scrapper
+from scraper import Scraper
 
 def main():
-    Scrapper.run_with_config("config.json")
+    Scraper.run_with_config("config.json")
 
 
 if __name__ == "__main__":

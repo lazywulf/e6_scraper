@@ -1,5 +1,5 @@
 import argparse
-from scrapper import Scrapper
+from scraper import Scraper
 
 def main():
     def remove_none(d):
@@ -43,7 +43,7 @@ def main():
     }
     config = remove_none(config)
 
-    Scrapper.run(config)
+    Scraper.run(config)
 
 
 if __name__ == "__main__":
