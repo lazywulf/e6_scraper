@@ -61,6 +61,6 @@ python run_with_searchbar.py -k "cuddling -kissing -rating:e" -p 10 -pp 20 -d ".
 6. `-c`, `--chunk_size`: self explanatory
 7. `-to`, `--timeout`: socket read timeout time
 
-> All methods can be found in the `Scrapper` class, you can call them directly if needed.
+> All methods can be found in the `Scraper` class, you can call them directly if needed.
 
 
