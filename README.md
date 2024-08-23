@@ -1,7 +1,7 @@
-# e6_scrapper
+# e6_scraper
 
 ## description
-- An asynchronized web scrapper for [e621.net](https://e621.net/).
+- An asynchronized web scraper for [e621.net](https://e621.net/).
     - This site runs off of the Ouroboros platform, a danbooru-style software specifically designed for the site.
     - So it can support other similiar site with little modification.
         - I'll do it in the future. (Maybe)
