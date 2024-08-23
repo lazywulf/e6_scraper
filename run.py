@@ -15,8 +15,7 @@ def main():
     parser.add_argument("-r", "--rating", default=None, help="Rating")
     parser.add_argument("-o", "--order", default=None, help="Order")
     parser.add_argument("-s", "--score", default=None, help="Score")
-    parser.add_argument("-u", "--user", default=None, help="User")
-    parser.add_argument("-k", "--api_key", default=None, help="API Key")
+    parser.add_argument('-a', '--auth', nargs=2, default=(None, None), help='User and API Key')
     parser.add_argument("-d", "--download_dir", default=None, help="Download directory")
     parser.add_argument("-pp", "--post_per_page", type=int, default=50, help="Post per page")
     parser.add_argument("-p", "--pages", type=int, default=1, help="Pages")
@@ -34,8 +33,8 @@ def main():
             "score": args["score"]
         },
         "auth": {
-            "user": args["user"],
-            "api_key": args["api_key"]
+            "user": args["auth"][0],
+            "api_key": args["auth"][1]
         },
         "post_per_page": args["post_per_page"],
         "pages": args["pages"],

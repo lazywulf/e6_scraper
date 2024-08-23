@@ -1,35 +1,66 @@
 # e6_scrapper
 
 ## description
-- An asynchronized web scrapper for e621.net.
+- An asynchronized web scrapper for [e621.net](https://e621.net/).
+    - This site runs off of the Ouroboros platform, a danbooru-style software specifically designed for the site.
+    - So it can support other similiar site with little modification.
+        - I'll do it in the future. (Maybe)
+- Supports batch commands.
 
 ## How to use
-1. Run main.py straight ahead. Here's an example command:
+### `run.py`
+Example command:
 ```
-python run.py -t cuddling -r safe -p 5 -d ./downloads
+python run.py -t cuddling romantic -r safe -o random -s ">450" -p 5 -d ./downloads
 ```
-For any other flags, please see run.py.
-    - blacklist: a list with the tags you don't want to see
-    - tags: a list of tags you are searching for
-        - with a config file, you may not do something like `-rating:e`, please use `run_with_searchbar.py`
-    - config: a dictionary of some searching configuration, please see [e621 search cheat sheet](https://e621.net/help/cheatsheet) for more.
-    - auth:
-        - user: your username
-        - api_key: api key for your account
-            - login may override post per pages
-            - Go to Account->Manage API Access for the key
-    - post per page: how many post in a page
-    - pages: how many pages you want to access
-        - along with post per page, it determines how many post the scrapper is going to download
-        - the numbers may be slightly off because of hidden items
-    - chunk size
-    - timeout: socket read timeout time
+> Avalible flags listed below.
+1. `-b`, `--blacklist`: a list with the tags you don't want to see
+2. `-t`, `--tags`: a list of tags you are searching for
+    - with a config file, you may not do something like `-rating:e`, please use `run_with_searchbar.py`
+3. `-f`, `--fav`: favorite list of a user
+4. `-r`, `--rating`: rating tag
+5. `-o`, `--order`: the order of the posts
+    - All downloads will start from page 1
+6. `-s`, `--score`: score of the post
+7. `-a`, `--auth`: takes two args
+    1. your username
+    2. api key for your account
+>
+    Login may override post per pages.
+    Go to Account->Manage API Access for the key
 
-2. Set config.json and run run_by_file.py.
+8. `-d`, `--download_dir`: the directory the downloaded files should be
+8. `-pp`, `--post_per_page`: how many post in a page
+9. `-p`, `--pages`: how many pages you want to access
+>
+    Along with post per page, it determines how many post the scrapper is going to download.
+    The numbers may be slightly off because of hidden items.
+10. `-c`, `--chunk_size`: self explanatory
+11. `-to`, `--timeout`: socket read timeout time
 
-3. Use `Scrapper.run(<dict>)` if you have the argument dict.
+### `run_with_config.py`
+Example command:
+```
+python run_with_config.py
+```
+Set a configuration file.
+For more options in "config", please see [e621 search cheat sheet](https://e621.net/help/cheatsheet).
 
-## notes
-It's a project for practice purposes. Don't expect too much.
+### `run_with_searchbar.py`
+Example command:
+```
+python run_with_searchbar.py -k "cuddling -kissing -rating:e" -p 10 -pp 20 -d "./downloads"
+```
+1. `-k`, `--keyword`: what you type in the searchbar on the site
+2. `-a`, `--auth`: takes two args
+    1. your username
+    2. api key for your account
+3. `-d`, `--download_dir`: the directory the downloaded files should be
+4. `-pp`, `--post_per_page`: how many post in a page
+5. `-p`, `--pages`: how many pages you want to access
+6. `-c`, `--chunk_size`: self explanatory
+7. `-to`, `--timeout`: socket read timeout time
+
+> All methods can be found in the `Scrapper` class, you can call them directly if needed.
 
 
